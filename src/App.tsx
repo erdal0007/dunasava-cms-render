@@ -14,7 +14,20 @@ const AdminStatistics = lazy(() => import('./admin/AdminStatistics'))
 const AdminSettings = lazy(() => import('./admin/AdminSettings'))
 const AdminMedia = lazy(() => import('./admin/AdminMedia'))
 
+const DUNASAVA_HOSTS = new Set(['dunasava.com', 'www.dunasava.com'])
+const REMOTE_CMS_ORIGIN = 'https://dunasava-cms.onrender.com'
+
 export default function App() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase()
+    const path = window.location.pathname
+    const isCmsPath = path.startsWith('/login') || path.startsWith('/admin')
+    if (DUNASAVA_HOSTS.has(host) && isCmsPath) {
+      window.location.replace(`${REMOTE_CMS_ORIGIN}${path}${window.location.search}${window.location.hash}`)
+      return null
+    }
+  }
+
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#0A1414]" />}>
       <Routes>

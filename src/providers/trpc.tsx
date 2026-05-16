@@ -7,6 +7,18 @@ import type { ReactNode } from "react";
 
 export const trpc = createTRPCReact<AppRouter>();
 
+const DUNASAVA_HOSTS = new Set(["dunasava.com", "www.dunasava.com"]);
+const REMOTE_CMS_ORIGIN = "https://dunasava-cms.onrender.com";
+
+function resolveTrpcUrl() {
+  if (typeof window === "undefined") return "/api/trpc";
+  const host = window.location.hostname.toLowerCase();
+  if (DUNASAVA_HOSTS.has(host)) {
+    return `${REMOTE_CMS_ORIGIN}/api/trpc`;
+  }
+  return "/api/trpc";
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,7 +31,7 @@ const queryClient = new QueryClient({
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: resolveTrpcUrl(),
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {
