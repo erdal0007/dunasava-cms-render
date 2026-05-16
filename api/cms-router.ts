@@ -230,7 +230,7 @@ export const cmsRouter = createRouter({
         slug: z.string().min(1),
         titleSr: z.string().optional(),
         titleTr: z.string().optional(),
-        titleEn: z.string().min(1),
+        titleEn: z.string().optional(),
         descriptionSr: z.string().optional(),
         descriptionTr: z.string().optional(),
         descriptionEn: z.string().optional(),
@@ -241,7 +241,15 @@ export const cmsRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const db = getDb();
-      await db.insert(products).values(input);
+      const normalizedInput = {
+        ...input,
+        titleEn:
+          input.titleEn?.trim() ||
+          input.titleTr?.trim() ||
+          input.titleSr?.trim() ||
+          input.slug.trim(),
+      };
+      await db.insert(products).values(normalizedInput);
       return { success: true };
     }),
 
@@ -252,7 +260,7 @@ export const cmsRouter = createRouter({
         slug: z.string().min(1),
         titleSr: z.string().optional(),
         titleTr: z.string().optional(),
-        titleEn: z.string().min(1),
+        titleEn: z.string().optional(),
         descriptionSr: z.string().optional(),
         descriptionTr: z.string().optional(),
         descriptionEn: z.string().optional(),
@@ -264,7 +272,17 @@ export const cmsRouter = createRouter({
     .mutation(async ({ input }) => {
       const db = getDb();
       const { id, ...data } = input;
-      await db.update(products).set(data).where(eq(products.id, input.id));
+      await db
+        .update(products)
+        .set({
+          ...data,
+          titleEn:
+            data.titleEn?.trim() ||
+            data.titleTr?.trim() ||
+            data.titleSr?.trim() ||
+            data.slug.trim(),
+        })
+        .where(eq(products.id, input.id));
       return { success: true };
     }),
 

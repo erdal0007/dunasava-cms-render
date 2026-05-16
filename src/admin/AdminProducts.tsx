@@ -8,15 +8,29 @@ const emptyForm = {
   imageUrl: '', sortOrder: 0, isActive: true,
 };
 
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message.toLowerCase().includes('duplicate entry')) {
+      return 'Aynı slug zaten var. Lütfen farklı bir slug kullanın.';
+    }
+    return error.message;
+  }
+  return 'Bilinmeyen hata';
+}
+
 export default function AdminProducts() {
   const utils = trpc.useUtils();
   const { data: productList, isLoading } = trpc.cms.productList.useQuery();
   const { data: assetList } = trpc.cms.assetList.useQuery();
   const [editing, setEditing] = useState<typeof emptyForm | null>(null);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SaveStatus>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const createMut = trpc.cms.productCreate.useMutation({ onSuccess: () => { utils.cms.productList.invalidate(); setEditing(null); } });
-  const updateMut = trpc.cms.productUpdate.useMutation({ onSuccess: () => { utils.cms.productList.invalidate(); setEditing(null); } });
+  const createMut = trpc.cms.productCreate.useMutation();
+  const updateMut = trpc.cms.productUpdate.useMutation();
   const deleteMut = trpc.cms.productDelete.useMutation({ onSuccess: () => utils.cms.productList.invalidate() });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
@@ -25,13 +39,32 @@ export default function AdminProducts() {
     p.slug.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing) return;
+    if (!editing.slug.trim()) {
+      setStatus('error');
+      setStatusMessage('Slug boş olamaz.');
+      return;
+    }
+
+    setStatus('saving');
+    setStatusMessage('Kaydediliyor...');
+
     const { id, ...data } = editing;
-    if (id) {
-      updateMut.mutate({ id, ...data });
-    } else {
-      createMut.mutate(data);
+
+    try {
+      if (id) {
+        await updateMut.mutateAsync({ id, ...data });
+      } else {
+        await createMut.mutateAsync(data);
+      }
+      await utils.cms.productList.invalidate();
+      setStatus('success');
+      setStatusMessage('Ürün başarıyla kaydedildi.');
+      setEditing(null);
+    } catch (error) {
+      setStatus('error');
+      setStatusMessage(`Kaydetme hatası: ${getErrorMessage(error)}`);
     }
   };
 
@@ -62,10 +95,31 @@ export default function AdminProducts() {
           <h1 className="text-2xl font-display text-white mb-1">Ürünler</h1>
           <p className="text-[#8A9BAE] text-sm">Site ürünlerini yönetin.</p>
         </div>
-        <button onClick={() => setEditing({ ...emptyForm })} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors">
+        <button
+          onClick={() => {
+            setEditing({ ...emptyForm });
+            setStatus('idle');
+            setStatusMessage('');
+          }}
+          className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors"
+        >
           <Plus size={16} /> Yeni Ürün
         </button>
       </div>
+
+      {status !== 'idle' && (
+        <div
+          className={`mb-4 rounded-lg border px-3 py-2 text-xs ${
+            status === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : status === 'error'
+                ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                : 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
 
       <div className="relative mb-4">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A9BAE]" />
@@ -143,7 +197,13 @@ export default function AdminProducts() {
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-[#1A3A4A]">
               <button onClick={() => setEditing(null)} className="text-[#8A9BAE] hover:text-white text-sm px-4 py-2">İptal</button>
-              <button onClick={handleSave} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69]"><Save size={14} /> Kaydet</button>
+              <button
+                onClick={handleSave}
+                disabled={status === 'saving'}
+                className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Save size={14} /> {status === 'saving' ? 'Kaydediliyor...' : 'Kaydet'}
+              </button>
             </div>
           </div>
         </div>
