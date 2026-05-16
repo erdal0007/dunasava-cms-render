@@ -9,6 +9,11 @@ import {
 
 const db = getDb();
 
+async function tableHasRows(table: any): Promise<boolean> {
+  const rows = await db.select().from(table).limit(1);
+  return rows.length > 0;
+}
+
 async function seed() {
   console.log("Seeding database...");
 
@@ -53,10 +58,14 @@ async function seed() {
     { key: "stat.products", sr: "Proizvoda", tr: "Ürün", en: "Products", category: "statistics" },
   ];
 
-  for (const t of translationData) {
-    await db.insert(translations).values(t);
+  if (!(await tableHasRows(translations))) {
+    for (const t of translationData) {
+      await db.insert(translations).values(t);
+    }
+    console.log(`Inserted ${translationData.length} translations`);
+  } else {
+    console.log("Skipped translations (already seeded)");
   }
-  console.log(`Inserted ${translationData.length} translations`);
 
   // Seed statistics
   const statData = [
@@ -65,10 +74,14 @@ async function seed() {
     { value: "4000", suffix: "m²", labelSr: "Proizvodni Pogon", labelTr: "Üretim Tesisi", labelEn: "Production Facility", sortOrder: 3 },
     { value: "6", suffix: "", labelSr: "Proizvodnih Linija", labelTr: "Üretim Hattı", labelEn: "Production Lines", sortOrder: 4 },
   ];
-  for (const s of statData) {
-    await db.insert(statistics).values(s);
+  if (!(await tableHasRows(statistics))) {
+    for (const s of statData) {
+      await db.insert(statistics).values(s);
+    }
+    console.log(`Inserted ${statData.length} statistics`);
+  } else {
+    console.log("Skipped statistics (already seeded)");
   }
-  console.log(`Inserted ${statData.length} statistics`);
 
   // Seed sections
   const sectionData = [
@@ -91,10 +104,14 @@ async function seed() {
       imageUrl: "", sortOrder: 3, isActive: true, sectionType: "mission" as const,
     },
   ];
-  for (const s of sectionData) {
-    await db.insert(sections).values(s);
+  if (!(await tableHasRows(sections))) {
+    for (const s of sectionData) {
+      await db.insert(sections).values(s);
+    }
+    console.log(`Inserted ${sectionData.length} sections`);
+  } else {
+    console.log("Skipped sections (already seeded)");
   }
-  console.log(`Inserted ${sectionData.length} sections`);
 
   // Seed products
   const productData = [
@@ -105,10 +122,14 @@ async function seed() {
     { slug: "hdpe-tgrip", titleSr: "HDPE T-Grip Geomembrana", titleTr: "HDPE T-Grip Geomembran", titleEn: "HDPE T-Grip Geomembrane", descriptionSr: "HDPE membrana sa T-oblikovanim sidrima.", descriptionTr: "T şekilli ankrajlara sahip HDPE membran.", descriptionEn: "HDPE membrane with T-shaped anchors.", imageUrl: "/assets/images/product-hdpe-tgrip.jpg", sortOrder: 5, isActive: true },
     { slug: "geotextile", titleSr: "GTX Geotekstil", titleTr: "GTX Geotekstil", titleEn: "GTX Geotextile", descriptionSr: "Propusni tekstilni proizvod za filtraciju.", descriptionTr: "Filtrasyon için geçirgen tekstil ürünü.", descriptionEn: "Permeable textile product for filtration.", imageUrl: "/assets/images/product-geotextile.jpg", sortOrder: 6, isActive: true },
   ];
-  for (const p of productData) {
-    await db.insert(products).values(p);
+  if (!(await tableHasRows(products))) {
+    for (const p of productData) {
+      await db.insert(products).values(p);
+    }
+    console.log(`Inserted ${productData.length} products`);
+  } else {
+    console.log("Skipped products (already seeded)");
   }
-  console.log(`Inserted ${productData.length} products`);
 
   // Seed sectors
   const sectorData = [
@@ -118,10 +139,14 @@ async function seed() {
     { slug: "environment", number: "04", titleSr: "Zaštita Životne Sredine", titleTr: "Çevre Koruma", titleEn: "Environmental Protection", descriptionSr: "Kontrola erozije i restauracija staništa.", descriptionTr: "Erozyon kontrolü ve habitat restorasyonu.", descriptionEn: "Erosion control and habitat restoration.", imageUrl: "/assets/images/sector-environment.jpg", imageUrl2: "", sortOrder: 4, isActive: true },
     { slug: "construction", number: "05", titleSr: "Građevinski Projekti", titleTr: "İnşaat Projeleri", titleEn: "Construction Projects", descriptionSr: "Hidroizolacija i zaštita temelja.", descriptionTr: "Su yalıtımı ve temel koruma.", descriptionEn: "Waterproofing and foundation protection.", imageUrl: "/assets/images/sector-construction.jpg", imageUrl2: "", sortOrder: 5, isActive: true },
   ];
-  for (const s of sectorData) {
-    await db.insert(sectors).values(s);
+  if (!(await tableHasRows(sectors))) {
+    for (const s of sectorData) {
+      await db.insert(sectors).values(s);
+    }
+    console.log(`Inserted ${sectorData.length} sectors`);
+  } else {
+    console.log("Skipped sectors (already seeded)");
   }
-  console.log(`Inserted ${sectorData.length} sectors`);
 
   console.log("Seed complete!");
 }
