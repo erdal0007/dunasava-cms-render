@@ -26,8 +26,14 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading, isAuthenticated } = useAuth({
+    redirectOnUnauthenticated: true,
+  });
   const location = useLocation();
+
+  if (isLoading || !isAuthenticated) {
+    return <div className="min-h-screen bg-[#0A1628]" />;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0A1628]">
