@@ -14,7 +14,7 @@ async function tableHasRows(table: any): Promise<boolean> {
   return rows.length > 0;
 }
 
-async function seed() {
+export async function runSeed() {
   console.log("Seeding database...");
 
   // Seed translations
@@ -151,4 +151,13 @@ async function seed() {
   console.log("Seed complete!");
 }
 
-seed().catch(console.error);
+const invokedDirectly =
+  process.argv[1]?.includes("/db/seed.") ||
+  process.argv[1]?.includes("\\db\\seed.");
+
+if (invokedDirectly) {
+  runSeed().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}

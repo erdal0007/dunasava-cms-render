@@ -5,6 +5,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
+import { ensureDatabaseReady } from "./lib/bootstrap";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -72,6 +73,7 @@ export default app;
 if (env.isProduction) {
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
+  await ensureDatabaseReady();
   serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
