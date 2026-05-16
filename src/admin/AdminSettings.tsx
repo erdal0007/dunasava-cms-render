@@ -1,20 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { trpc } from '@/providers/trpc';
 import { Save, AlertTriangle } from 'lucide-react';
+
+const DEFAULTS = {
+  siteName: 'DunaSava',
+  siteTagline: 'Snaga za Konstrukcije',
+  contactEmail: 'isakov@dunasava.com',
+  contactPhone: '+381 63 8201207',
+  address: 'Luke Celovica Trabinjca 18, BW Kings Park, Office 319, Beograd, Srbija',
+  whatsapp: '381638201207',
+};
+
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export default function AdminSettings() {
   const utils = trpc.useUtils();
   const { data: settings } = trpc.cms.settingList.useQuery();
-  const upsertMut = trpc.cms.settingUpsert.useMutation({ onSuccess: () => utils.cms.settingList.invalidate() });
+  const upsertMut = trpc.cms.settingUpsert.useMutation();
 
-  const [siteName, setSiteName] = useState(settings?.find(s => s.key === 'site_name')?.value || 'DunaSava');
-  const [siteTagline, setSiteTagline] = useState(settings?.find(s => s.key === 'site_tagline')?.value || 'Snaga za Konstrukcije');
-  const [contactEmail, setContactEmail] = useState(settings?.find(s => s.key === 'contact_email')?.value || 'isakov@dunasava.com');
-  const [contactPhone, setContactPhone] = useState(settings?.find(s => s.key === 'contact_phone')?.value || '+381 63 8201207');
-  const [address, setAddress] = useState(settings?.find(s => s.key === 'contact_address')?.value || 'Luke Celovica Trabinjca 18, BW Kings Park, Office 319, Beograd, Srbija');
-  const [whatsapp, setWhatsapp] = useState(settings?.find(s => s.key === 'whatsapp')?.value || '381638201207');
+  const [siteName, setSiteName] = useState(DEFAULTS.siteName);
+  const [siteTagline, setSiteTagline] = useState(DEFAULTS.siteTagline);
+  const [contactEmail, setContactEmail] = useState(DEFAULTS.contactEmail);
+  const [contactPhone, setContactPhone] = useState(DEFAULTS.contactPhone);
+  const [address, setAddress] = useState(DEFAULTS.address);
+  const [whatsapp, setWhatsapp] = useState(DEFAULTS.whatsapp);
+  const [status, setStatus] = useState<SaveStatus>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const handleSave = () => {
+  const settingsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of settings ?? []) {
+      map.set(item.key, item.value ?? '');
+    }
+    return map;
+  }, [settings]);
+
+  useEffect(() => {
+    if (!settings) return;
+    setSiteName(settingsMap.get('site_name') || DEFAULTS.siteName);
+    setSiteTagline(settingsMap.get('site_tagline') || DEFAULTS.siteTagline);
+    setContactEmail(settingsMap.get('contact_email') || DEFAULTS.contactEmail);
+    setContactPhone(settingsMap.get('contact_phone') || DEFAULTS.contactPhone);
+    setAddress(settingsMap.get('contact_address') || DEFAULTS.address);
+    setWhatsapp(settingsMap.get('whatsapp') || DEFAULTS.whatsapp);
+  }, [settings, settingsMap]);
+
+  const handleSave = async () => {
+    setStatus('saving');
+    setStatusMessage('Kaydediliyor...');
+
     const items = [
       { key: 'site_name', value: siteName, group: 'general' },
       { key: 'site_tagline', value: siteTagline, group: 'general' },
@@ -23,7 +57,17 @@ export default function AdminSettings() {
       { key: 'contact_address', value: address, group: 'contact' },
       { key: 'whatsapp', value: whatsapp, group: 'contact' },
     ];
-    items.forEach(item => upsertMut.mutate(item));
+
+    try {
+      await Promise.all(items.map((item) => upsertMut.mutateAsync(item)));
+      await utils.cms.settingList.invalidate();
+      setStatus('success');
+      setStatusMessage('Ayarlar başarıyla kaydedildi.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
+      setStatus('error');
+      setStatusMessage(`Kaydetme hatası: ${message}`);
+    }
   };
 
   return (
@@ -73,13 +117,31 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-4 flex items-start gap-3">
         <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
         <p className="text-amber-400/80 text-xs">Değişiklikler kaydedildiğinde site anında güncellenir. Lütfen dikkatli olun.</p>
       </div>
 
-      <button onClick={handleSave} className="flex items-center gap-2 bg-[#4A7C59] text-white px-6 py-2.5 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors">
-        <Save size={16} /> Ayarları Kaydet
+      {status !== 'idle' && (
+        <div
+          className={`mb-6 rounded-lg border px-3 py-2 text-xs ${
+            status === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : status === 'error'
+                ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                : 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
+
+      <button
+        onClick={handleSave}
+        disabled={status === 'saving'}
+        className="flex items-center gap-2 bg-[#4A7C59] text-white px-6 py-2.5 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <Save size={16} /> {status === 'saving' ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
       </button>
     </div>
   );
