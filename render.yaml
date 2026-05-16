@@ -4,14 +4,12 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: NODE_ENV=production node dist/boot.js
     healthCheckPath: /api/trpc/ping
     envVars:
       - key: NODE_VERSION
         value: 22
-      - key: NODE_ENV
-        value: production
       - key: APP_ID
         sync: false
       - key: APP_SECRET
