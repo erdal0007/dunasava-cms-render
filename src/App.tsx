@@ -1,0 +1,41 @@
+import { lazy, Suspense } from 'react'
+import { Routes, Route } from 'react-router'
+import Home from './pages/Home'
+import Login from './pages/Login'
+import NotFound from './pages/NotFound'
+
+const AdminLayout = lazy(() => import('./admin/AdminLayout'))
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'))
+const AdminSections = lazy(() => import('./admin/AdminSections'))
+const AdminProducts = lazy(() => import('./admin/AdminProducts'))
+const AdminSectors = lazy(() => import('./admin/AdminSectors'))
+const AdminTranslations = lazy(() => import('./admin/AdminTranslations'))
+const AdminStatistics = lazy(() => import('./admin/AdminStatistics'))
+const AdminSettings = lazy(() => import('./admin/AdminSettings'))
+const AdminMedia = lazy(() => import('./admin/AdminMedia'))
+
+export default function App() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0A1414]" />}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="sections" element={<AdminSections />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="sectors" element={<AdminSectors />} />
+          <Route path="translations" element={<AdminTranslations />} />
+          <Route path="statistics" element={<AdminStatistics />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="media" element={<AdminMedia />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  )
+}
