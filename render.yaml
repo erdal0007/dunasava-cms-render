@@ -16,6 +16,10 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: VITE_APP_ID
+        sync: false
+      - key: VITE_KIMI_AUTH_URL
+        sync: false
       - key: KIMI_AUTH_URL
         sync: false
       - key: KIMI_OPEN_URL
