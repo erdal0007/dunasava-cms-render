@@ -34,10 +34,22 @@ export default function AdminMedia() {
   const deleteMut = trpc.cms.assetDelete.useMutation({
     onSuccess: () => utils.cms.assetList.invalidate(),
   });
+  const uploadMut = trpc.cms.assetUpload.useMutation({
+    onSuccess: () => {
+      utils.cms.assetList.invalidate();
+      setUploadStatus("Yükleme başarılı.");
+      setSelectedFile(null);
+    },
+    onError: (err) => {
+      setUploadStatus(`Yükleme hatası: ${err.message}`);
+    },
+  });
 
   const [url, setUrl] = useState("");
   const [category, setCategory] = useState("general");
   const [search, setSearch] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState("");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -65,6 +77,25 @@ export default function AdminMedia() {
 
   const copy = async (text: string) => {
     await navigator.clipboard.writeText(text);
+  };
+
+  const uploadFile = async () => {
+    if (!selectedFile) return;
+    setUploadStatus("Dosya yükleniyor...");
+
+    const dataBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Dosya okunamadı."));
+      reader.readAsDataURL(selectedFile);
+    });
+
+    uploadMut.mutate({
+      fileName: selectedFile.name,
+      mimeType: selectedFile.type || "image/jpeg",
+      dataBase64,
+      category,
+    });
   };
 
   return (
@@ -103,6 +134,28 @@ export default function AdminMedia() {
         >
           <Plus size={15} /> Görseli Kaydet
         </button>
+
+        <div className="mt-4 pt-4 border-t border-[#1A3A4A]">
+          <div className="text-[#8A9BAE] text-xs mb-2">Dosya Yükle (jpg/png/webp/gif/svg)</div>
+          <div className="flex flex-col md:flex-row gap-3 md:items-center">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              className="text-[#8A9BAE] text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-[#1A3A4A] file:text-[#E6EEF7]"
+            />
+            <button
+              onClick={uploadFile}
+              disabled={!selectedFile || uploadMut.isPending}
+              className="flex items-center gap-2 bg-[#1A3A4A] text-[#E6EEF7] px-4 py-2 rounded-lg text-sm hover:bg-[#24485B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Plus size={15} /> {uploadMut.isPending ? "Yükleniyor..." : "Dosyayı Yükle"}
+            </button>
+          </div>
+          {uploadStatus && (
+            <div className="mt-2 text-xs text-[#8A9BAE]">{uploadStatus}</div>
+          )}
+        </div>
       </div>
 
       <div className="mb-4">
@@ -145,4 +198,3 @@ export default function AdminMedia() {
     </div>
   );
 }
-

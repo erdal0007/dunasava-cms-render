@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
+import fs from "fs/promises";
+import path from "path";
 import {
   sections,
   products,
@@ -428,6 +430,58 @@ export const cmsRouter = createRouter({
       const db = getDb();
       await db.insert(assets).values(input);
       return { success: true };
+    }),
+
+  assetUpload: adminQuery
+    .input(
+      z.object({
+        fileName: z.string().min(1),
+        mimeType: z.string().min(1),
+        dataBase64: z.string().min(1),
+        category: z.string().default("general"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+
+      const extensionFromMime = (() => {
+        if (input.mimeType === "image/png") return ".png";
+        if (input.mimeType === "image/webp") return ".webp";
+        if (input.mimeType === "image/gif") return ".gif";
+        if (input.mimeType === "image/svg+xml") return ".svg";
+        return ".jpg";
+      })();
+
+      const safeBaseName = input.fileName
+        .replace(/\.[a-zA-Z0-9]+$/, "")
+        .replace(/[^a-zA-Z0-9-_]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "image";
+
+      const filename = `${Date.now()}-${safeBaseName}${extensionFromMime}`;
+      const uploadsDir = path.resolve(process.cwd(), "dist/public/uploads");
+      await fs.mkdir(uploadsDir, { recursive: true });
+
+      const rawBase64 = input.dataBase64.includes(",")
+        ? input.dataBase64.split(",")[1]
+        : input.dataBase64;
+      const buffer = Buffer.from(rawBase64, "base64");
+      const targetPath = path.join(uploadsDir, filename);
+
+      await fs.writeFile(targetPath, buffer);
+
+      const url = `/uploads/${filename}`;
+      await db.insert(assets).values({
+        filename,
+        originalName: input.fileName,
+        mimeType: input.mimeType,
+        size: buffer.length,
+        url,
+        category: input.category,
+      });
+
+      return { success: true, url };
     }),
 
   assetDelete: adminQuery
