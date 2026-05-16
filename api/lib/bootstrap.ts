@@ -5,13 +5,30 @@ import { sections } from "@db/schema";
 import { env } from "./env";
 
 function isMissingTableError(error: unknown): boolean {
-  const message =
-    error instanceof Error ? error.message : String(error ?? "").toString();
+  const message = extractErrorText(error);
   return (
     message.includes("doesn't exist") ||
     message.includes("ER_NO_SUCH_TABLE") ||
+    message.includes("42S02") ||
+    message.includes("errno: 1146") ||
     message.includes("Table") && message.includes("doesn't exist")
   );
+}
+
+function extractErrorText(error: unknown): string {
+  if (!error) return "";
+
+  if (typeof error === "string") return error;
+  if (error instanceof Error) {
+    const extra = JSON.stringify(error, null, 2);
+    return `${error.name}\n${error.message}\n${extra}`;
+  }
+
+  try {
+    return JSON.stringify(error, null, 2);
+  } catch {
+    return String(error);
+  }
 }
 
 export async function ensureDatabaseReady() {
