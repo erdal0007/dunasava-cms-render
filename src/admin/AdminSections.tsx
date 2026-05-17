@@ -11,15 +11,23 @@ const emptyForm = {
   imageUrl: '', sortOrder: 0, isActive: true, sectionType: 'about' as typeof sectionTypes[number],
 };
 
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Bilinmeyen hata';
+}
+
 export default function AdminSections() {
   const utils = trpc.useUtils();
   const { data: sections, isLoading } = trpc.cms.sectionList.useQuery();
   const { data: assetList } = trpc.cms.assetList.useQuery();
   const [editing, setEditing] = useState<typeof emptyForm | null>(null);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SaveStatus>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const createMut = trpc.cms.sectionCreate.useMutation({ onSuccess: () => { utils.cms.sectionList.invalidate(); setEditing(null); } });
-  const updateMut = trpc.cms.sectionUpdate.useMutation({ onSuccess: () => { utils.cms.sectionList.invalidate(); setEditing(null); } });
+  const createMut = trpc.cms.sectionCreate.useMutation();
+  const updateMut = trpc.cms.sectionUpdate.useMutation();
   const deleteMut = trpc.cms.sectionDelete.useMutation({ onSuccess: () => utils.cms.sectionList.invalidate() });
   const toggleMut = trpc.cms.sectionToggle.useMutation({ onSuccess: () => utils.cms.sectionList.invalidate() });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
@@ -29,13 +37,37 @@ export default function AdminSections() {
     s.slug.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing) return;
+    if (!editing.slug.trim()) {
+      setStatus('error');
+      setStatusMessage('Slug boş olamaz.');
+      return;
+    }
+    if (!editing.titleEn.trim()) {
+      setStatus('error');
+      setStatusMessage('Başlık İngilizce zorunlu.');
+      return;
+    }
+
+    setStatus('saving');
+    setStatusMessage('Kaydediliyor...');
+
     const { id, ...data } = editing;
-    if (id) {
-      updateMut.mutate({ id, ...data });
-    } else {
-      createMut.mutate(data);
+
+    try {
+      if (id) {
+        await updateMut.mutateAsync({ id, ...data });
+      } else {
+        await createMut.mutateAsync(data);
+      }
+      await utils.cms.sectionList.invalidate();
+      setStatus('success');
+      setStatusMessage('Bölüm başarıyla kaydedildi.');
+      setEditing(null);
+    } catch (error) {
+      setStatus('error');
+      setStatusMessage(`Kaydetme hatası: ${getErrorMessage(error)}`);
     }
   };
 
@@ -71,12 +103,30 @@ export default function AdminSections() {
           <p className="text-[#8A9BAE] text-sm">Site bölümlerini yönetin.</p>
         </div>
         <button
-          onClick={() => setEditing({ ...emptyForm })}
+          onClick={() => {
+            setEditing({ ...emptyForm });
+            setStatus('idle');
+            setStatusMessage('');
+          }}
           className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors"
         >
           <Plus size={16} /> Yeni Bölüm
         </button>
       </div>
+
+      {status !== 'idle' && (
+        <div
+          className={`mb-4 rounded-lg border px-3 py-2 text-xs ${
+            status === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : status === 'error'
+                ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                : 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-4">
@@ -226,8 +276,8 @@ export default function AdminSections() {
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-[#1A3A4A]">
               <button onClick={() => setEditing(null)} className="text-[#8A9BAE] hover:text-white text-sm px-4 py-2">İptal</button>
-              <button onClick={handleSave} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors">
-                <Save size={14} /> Kaydet
+              <button onClick={handleSave} disabled={status === 'saving'} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                <Save size={14} /> {status === 'saving' ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </div>
           </div>

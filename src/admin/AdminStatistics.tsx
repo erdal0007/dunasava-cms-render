@@ -4,14 +4,22 @@ import { Plus, Pencil, Trash2, X, Save, Search } from 'lucide-react';
 
 const emptyForm = { id: 0, value: '', suffix: '', labelSr: '', labelTr: '', labelEn: '', sortOrder: 0, isActive: true };
 
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Bilinmeyen hata';
+}
+
 export default function AdminStatistics() {
   const utils = trpc.useUtils();
   const { data: statList, isLoading } = trpc.cms.statisticList.useQuery();
   const [editing, setEditing] = useState<typeof emptyForm | null>(null);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SaveStatus>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const createMut = trpc.cms.statisticCreate.useMutation({ onSuccess: () => { utils.cms.statisticList.invalidate(); setEditing(null); } });
-  const updateMut = trpc.cms.statisticUpdate.useMutation({ onSuccess: () => { utils.cms.statisticList.invalidate(); setEditing(null); } });
+  const createMut = trpc.cms.statisticCreate.useMutation();
+  const updateMut = trpc.cms.statisticUpdate.useMutation();
   const deleteMut = trpc.cms.statisticDelete.useMutation({ onSuccess: () => utils.cms.statisticList.invalidate() });
 
   const filtered = statList?.filter(s =>
@@ -19,19 +27,52 @@ export default function AdminStatistics() {
     s.value.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing) return;
+    if (!editing.value.trim()) {
+      setStatus('error');
+      setStatusMessage('Değer boş olamaz.');
+      return;
+    }
+    if (!editing.labelEn.trim()) {
+      setStatus('error');
+      setStatusMessage('Etiket İngilizce zorunlu.');
+      return;
+    }
+
+    setStatus('saving');
+    setStatusMessage('Kaydediliyor...');
+
     const { id, ...data } = editing;
-    if (id) { updateMut.mutate({ id, ...data }); }
-    else { createMut.mutate(data); }
+
+    try {
+      if (id) {
+        await updateMut.mutateAsync({ id, ...data });
+      } else {
+        await createMut.mutateAsync(data);
+      }
+      await utils.cms.statisticList.invalidate();
+      setStatus('success');
+      setStatusMessage('İstatistik başarıyla kaydedildi.');
+      setEditing(null);
+    } catch (error) {
+      setStatus('error');
+      setStatusMessage(`Kaydetme hatası: ${getErrorMessage(error)}`);
+    }
   };
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-display text-white mb-1">İstatistikler</h1><p className="text-[#8A9BAE] text-sm">Site istatistiklerini yönetin.</p></div>
-        <button onClick={() => setEditing({ ...emptyForm })} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69]"><Plus size={16} /> Yeni İstatistik</button>
+        <button onClick={() => { setEditing({ ...emptyForm }); setStatus('idle'); setStatusMessage(''); }} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69]"><Plus size={16} /> Yeni İstatistik</button>
       </div>
+
+      {status !== 'idle' && (
+        <div className={`mb-4 rounded-lg border px-3 py-2 text-xs ${status === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : status === 'error' ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' : 'border-slate-500/30 bg-slate-500/10 text-slate-300'}`}>
+          {statusMessage}
+        </div>
+      )}
       <div className="relative mb-4">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A9BAE]" />
         <input type="text" placeholder="Ara..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-[#0D1F2D] border border-[#1A3A4A] rounded-lg pl-10 pr-4 py-2.5 text-white text-sm focus:border-[#4A7C59] focus:outline-none" />
@@ -84,7 +125,7 @@ export default function AdminStatistics() {
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-[#1A3A4A]">
               <button onClick={() => setEditing(null)} className="text-[#8A9BAE] hover:text-white text-sm px-4 py-2">İptal</button>
-              <button onClick={handleSave} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69]"><Save size={14} /> Kaydet</button>
+              <button onClick={handleSave} disabled={status === 'saving'} className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#5A8C69] disabled:opacity-60 disabled:cursor-not-allowed"><Save size={14} /> {status === 'saving' ? 'Kaydediliyor...' : 'Kaydet'}</button>
             </div>
           </div>
         </div>
