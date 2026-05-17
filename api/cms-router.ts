@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
+import { getUploadsDir } from "./lib/uploads";
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -478,7 +479,7 @@ export const cmsRouter = createRouter({
         .toLowerCase() || "image";
 
       const filename = `${Date.now()}-${safeBaseName}${extensionFromMime}`;
-      const uploadsDir = path.resolve(process.cwd(), "dist/public/uploads");
+      const uploadsDir = getUploadsDir();
       await fs.mkdir(uploadsDir, { recursive: true });
 
       const rawBase64 = input.dataBase64.includes(",")

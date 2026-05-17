@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { toast } from "sonner";
 import { Copy, Plus, Trash2 } from "lucide-react";
 
 function guessMimeType(url: string) {
@@ -32,16 +33,24 @@ export default function AdminMedia() {
     },
   });
   const deleteMut = trpc.cms.assetDelete.useMutation({
-    onSuccess: () => utils.cms.assetList.invalidate(),
+    onSuccess: async () => {
+      await utils.cms.assetList.invalidate();
+      toast.success("Medya kaydı silindi.");
+    },
+    onError: (err) => {
+      toast.error(`Medya silinemedi: ${err.message}`);
+    },
   });
   const uploadMut = trpc.cms.assetUpload.useMutation({
     onSuccess: () => {
       utils.cms.assetList.invalidate();
       setUploadStatus("Yükleme başarılı.");
       setSelectedFile(null);
+      toast.success("Görsel yüklendi.");
     },
     onError: (err) => {
       setUploadStatus(`Yükleme hatası: ${err.message}`);
+      toast.error(`Yükleme hatası: ${err.message}`);
     },
   });
 

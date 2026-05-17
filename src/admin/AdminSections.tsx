@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 
 const sectionTypes = ['hero', 'about', 'mission', 'products', 'sectors', 'production', 'statistics', 'contact'] as const;
@@ -28,8 +29,20 @@ export default function AdminSections() {
 
   const createMut = trpc.cms.sectionCreate.useMutation();
   const updateMut = trpc.cms.sectionUpdate.useMutation();
-  const deleteMut = trpc.cms.sectionDelete.useMutation({ onSuccess: () => utils.cms.sectionList.invalidate() });
-  const toggleMut = trpc.cms.sectionToggle.useMutation({ onSuccess: () => utils.cms.sectionList.invalidate() });
+  const deleteMut = trpc.cms.sectionDelete.useMutation({
+    onSuccess: async () => {
+      await utils.cms.sectionList.invalidate();
+      toast.success('Bölüm silindi.');
+    },
+    onError: (error) => {
+      toast.error(`Bölüm silinemedi: ${getErrorMessage(error)}`);
+    },
+  });
+  const toggleMut = trpc.cms.sectionToggle.useMutation({
+    onSuccess: async () => {
+      await utils.cms.sectionList.invalidate();
+    },
+  });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
   const filtered = sections?.filter(s =>

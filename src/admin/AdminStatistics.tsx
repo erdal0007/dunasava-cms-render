@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search } from 'lucide-react';
 
 const emptyForm = { id: 0, value: '', suffix: '', labelSr: '', labelTr: '', labelEn: '', sortOrder: 0, isActive: true };
@@ -20,7 +21,15 @@ export default function AdminStatistics() {
 
   const createMut = trpc.cms.statisticCreate.useMutation();
   const updateMut = trpc.cms.statisticUpdate.useMutation();
-  const deleteMut = trpc.cms.statisticDelete.useMutation({ onSuccess: () => utils.cms.statisticList.invalidate() });
+  const deleteMut = trpc.cms.statisticDelete.useMutation({
+    onSuccess: async () => {
+      await utils.cms.statisticList.invalidate();
+      toast.success('İstatistik silindi.');
+    },
+    onError: (error) => {
+      toast.error(`İstatistik silinemedi: ${getErrorMessage(error)}`);
+    },
+  });
 
   const filtered = statList?.filter(s =>
     s.labelEn?.toLowerCase().includes(search.toLowerCase()) ||

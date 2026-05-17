@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router'
 import './index.css'
 import { TRPCProvider } from "@/providers/trpc"
 import { LanguageProvider } from './context/LanguageContext'
+import { Toaster } from "@/components/ui/sonner"
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -12,6 +13,7 @@ createRoot(document.getElementById('root')!).render(
       <TRPCProvider>
         <LanguageProvider>
           <App />
+          <Toaster richColors closeButton />
         </LanguageProvider>
       </TRPCProvider>
     </BrowserRouter>

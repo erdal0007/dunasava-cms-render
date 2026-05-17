@@ -3,12 +3,15 @@ import type { HttpBindings } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import fs from "fs";
 import path from "path";
+import { getUploadsDir } from "./uploads";
 
 type App = Hono<{ Bindings: HttpBindings }>;
 
 export function serveStaticFiles(app: App) {
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
+  const uploadsDir = getUploadsDir();
 
+  app.use("/uploads/*", serveStatic({ root: uploadsDir }));
   app.use("*", serveStatic({ root: "./dist/public" }));
 
   app.notFound((c) => {

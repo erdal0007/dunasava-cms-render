@@ -2,12 +2,16 @@ services:
   - type: web
     name: dunasava-cms
     runtime: node
-    plan: free
+    plan: starter
     rootDir: .
     buildCommand: npm ci --include=dev && npm run build
     preDeployCommand: npm run db:push && npm run db:seed
     startCommand: NODE_ENV=production node dist/boot.js
     healthCheckPath: /api/trpc/ping
+    disk:
+      name: dunasava-uploads
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 22
@@ -21,3 +25,5 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+      - key: UPLOADS_DIR
+        value: /var/data/uploads

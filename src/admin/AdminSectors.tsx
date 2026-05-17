@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 
 const emptyForm = {
@@ -25,7 +26,15 @@ export default function AdminSectors() {
 
   const createMut = trpc.cms.sectorCreate.useMutation();
   const updateMut = trpc.cms.sectorUpdate.useMutation();
-  const deleteMut = trpc.cms.sectorDelete.useMutation({ onSuccess: () => utils.cms.sectorList.invalidate() });
+  const deleteMut = trpc.cms.sectorDelete.useMutation({
+    onSuccess: async () => {
+      await utils.cms.sectorList.invalidate();
+      toast.success('Sektör silindi.');
+    },
+    onError: (error) => {
+      toast.error(`Sektör silinemedi: ${getErrorMessage(error)}`);
+    },
+  });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
   const filtered = sectorList?.filter(s =>

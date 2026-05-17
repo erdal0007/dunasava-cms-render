@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 
 const emptyForm = {
@@ -31,7 +32,15 @@ export default function AdminProducts() {
 
   const createMut = trpc.cms.productCreate.useMutation();
   const updateMut = trpc.cms.productUpdate.useMutation();
-  const deleteMut = trpc.cms.productDelete.useMutation({ onSuccess: () => utils.cms.productList.invalidate() });
+  const deleteMut = trpc.cms.productDelete.useMutation({
+    onSuccess: async () => {
+      await utils.cms.productList.invalidate();
+      toast.success('Ürün silindi.');
+    },
+    onError: (error) => {
+      toast.error(`Ürün silinemedi: ${getErrorMessage(error)}`);
+    },
+  });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
   const filtered = productList?.filter(p =>
