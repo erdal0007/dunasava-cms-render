@@ -12,7 +12,10 @@ import {
   LogOut,
   ChevronRight,
   Globe,
+  ExternalLink,
 } from 'lucide-react';
+
+const RENDER_DASHBOARD_URL = 'https://dashboard.render.com/web/srv-d84brt8js32c739oi4f0';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -88,6 +91,15 @@ export default function AdminLayout() {
               <div className="text-[#8A9BAE] text-[10px]">{user?.role || 'admin'}</div>
             </div>
           </div>
+          <a
+            href={RENDER_DASHBOARD_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 w-full mb-2 bg-[#1A3A4A] text-[#E6EEF7] text-xs px-3 py-2 rounded-lg hover:bg-[#24495F] transition-colors"
+          >
+            <ExternalLink size={13} />
+            <span>Canlıya Al</span>
+          </a>
           <button
             onClick={() => logout()}
             className="flex items-center gap-2 text-[#8A9BAE] hover:text-red-400 text-xs transition-colors w-full px-2 py-1.5"

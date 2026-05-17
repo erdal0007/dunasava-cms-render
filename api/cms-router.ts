@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { getUploadsDir } from "./lib/uploads";
+import { resolveCmsAssetUrl } from "./lib/public-urls";
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -490,7 +491,7 @@ export const cmsRouter = createRouter({
 
       await fs.writeFile(targetPath, buffer);
 
-      const url = `/uploads/${filename}`;
+      const url = resolveCmsAssetUrl(`/uploads/${filename}`);
       await db.insert(assets).values({
         filename,
         originalName: input.fileName,

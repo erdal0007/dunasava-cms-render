@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { trpc } from '@/providers/trpc';
+import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -38,7 +39,7 @@ export default function AboutSection() {
       <div className="content-max">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="about-image relative overflow-hidden rounded opacity-0">
-            <img src={section?.imageUrl || '/assets/images/about-mining-installation.jpg'} alt="" className="w-full h-auto object-cover scale-110" loading="lazy" decoding="async" />
+            <img src={resolveCmsAssetUrl(section?.imageUrl) || '/assets/images/about-mining-installation.jpg'} alt="" className="w-full h-auto object-cover scale-110" loading="lazy" decoding="async" />
           </div>
           <div className="lg:pl-8">
             <span className="about-eyebrow text-label text-[#4A7C59] block mb-4 opacity-0">{eyebrow}</span>

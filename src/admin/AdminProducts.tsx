@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
+import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 
 const emptyForm = {
   id: 0, slug: '', titleSr: '', titleTr: '', titleEn: '',
@@ -153,7 +154,7 @@ export default function AdminProducts() {
                 <td className="px-4 py-3 text-white text-sm">{p.sortOrder}</td>
                 <td className="px-4 py-3 text-white text-sm">{p.slug}</td>
                 <td className="px-4 py-3 text-white text-sm">{p.titleEn}</td>
-                <td className="px-4 py-3">{p.imageUrl && <img src={p.imageUrl} alt="" className="w-12 h-8 object-cover rounded" />}</td>
+                <td className="px-4 py-3">{p.imageUrl && <img src={resolveCmsAssetUrl(p.imageUrl)} alt="" className="w-12 h-8 object-cover rounded" />}</td>
                 <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${p.isActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{p.isActive ? 'Aktif' : 'Pasif'}</span></td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -191,14 +192,14 @@ export default function AdminProducts() {
               <input value={editing.imageUrl} onChange={(e) => setEditing({...editing, imageUrl: e.target.value})} placeholder="Görsel URL" className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none" />
               <select
                 value=""
-                onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
-                className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
-              >
+                  onChange={(e) => setEditing({ ...editing, imageUrl: resolveCmsAssetUrl(e.target.value) })}
+                  className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
+                >
                 <option value="">Medya kütüphanesinden seç...</option>
-                {(assetList || []).map((a) => (
-                  <option key={a.id} value={a.url}>{a.originalName} - {a.category}</option>
-                ))}
-              </select>
+                  {(assetList || []).map((a) => (
+                    <option key={a.id} value={resolveCmsAssetUrl(a.url)}>{a.originalName} - {a.category}</option>
+                  ))}
+                </select>
               <div className="grid grid-cols-2 gap-4">
                 <input type="number" value={editing.sortOrder} onChange={(e) => setEditing({...editing, sortOrder: Number(e.target.value)})} placeholder="Sıra" className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none" />
                 <div className="flex items-center gap-2 pt-2"><input type="checkbox" checked={editing.isActive} onChange={(e) => setEditing({...editing, isActive: e.target.checked})} className="w-4 h-4 accent-[#4A7C59]" /><label className="text-white text-sm">Aktif</label></div>

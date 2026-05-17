@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { trpc } from '@/providers/trpc';
+import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -39,7 +40,7 @@ export default function ProductsSection() {
           {activeProducts?.map((product) => (
             <div key={product.id} className="product-card group cursor-pointer opacity-0">
               <div className="relative overflow-hidden rounded mb-4 aspect-[4/3]">
-                {product.imageUrl && <img src={product.imageUrl} alt={getTitle(product)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />}
+                {product.imageUrl && <img src={resolveCmsAssetUrl(product.imageUrl)} alt={getTitle(product)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />}
               </div>
               <h3 className="font-display text-lg text-[#1A1A1A] group-hover:text-[#4A7C59] transition-colors duration-300 mb-2 relative inline-block">
                 {getTitle(product)}

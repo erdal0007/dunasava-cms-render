@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { trpc } from '@/providers/trpc';
+import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -45,7 +46,7 @@ export default function SectorsSection() {
           {activeSectors?.map((sector, i) => (
             <div key={sector.id} className={`sector-card grid lg:grid-cols-2 gap-8 lg:gap-16 items-center opacity-0`}>
               <div className={`relative overflow-hidden rounded-lg aspect-video group ${i % 2 === 1 ? 'lg:order-2' : ''}`}>
-                {sector.imageUrl && <img src={sector.imageUrl} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />}
+                {sector.imageUrl && <img src={resolveCmsAssetUrl(sector.imageUrl)} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628]/60 via-transparent to-transparent" />
                 <span className="absolute top-4 right-4 font-display text-6xl md:text-8xl text-[#4A7C59]/15 select-none pointer-events-none">{sector.number}</span>
               </div>

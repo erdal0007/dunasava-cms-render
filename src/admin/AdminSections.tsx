@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { trpc } from '@/providers/trpc';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
+import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 
 const sectionTypes = ['hero', 'about', 'mission', 'products', 'sectors', 'production', 'statistics', 'contact'] as const;
 
@@ -264,17 +265,17 @@ export default function AdminSections() {
               </button>
               <div>
                 <label className="text-[#8A9BAE] text-xs mb-1 block">Görsel URL</label>
-                <input value={editing.imageUrl} onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })} className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none" />
+                <input value={editing.imageUrl} onChange={(e) => setEditing({ ...editing, imageUrl: resolveCmsAssetUrl(e.target.value) })} className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none" />
               </div>
               <select
                 value=""
                 onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
                 className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
               >
-                <option value="">Medya kütüphanesinden seç...</option>
-                {(assetList || []).map((a) => (
-                  <option key={a.id} value={a.url}>{a.originalName} - {a.category}</option>
-                ))}
+                    <option value="">Medya kütüphanesinden seç...</option>
+                    {(assetList || []).map((a) => (
+                      <option key={a.id} value={resolveCmsAssetUrl(a.url)}>{a.originalName} - {a.category}</option>
+                    ))}
               </select>
               <div className="grid grid-cols-2 gap-4">
                 <div>

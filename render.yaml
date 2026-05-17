@@ -25,5 +25,9 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+      - key: PUBLIC_ASSET_BASE_URL
+        value: https://dunasava-cms.onrender.com
+      - key: VITE_PUBLIC_ASSET_BASE_URL
+        value: https://dunasava-cms.onrender.com
       - key: UPLOADS_DIR
         value: /var/data/uploads
