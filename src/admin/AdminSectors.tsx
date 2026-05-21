@@ -3,6 +3,7 @@ import { trpc } from '@/providers/trpc';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 import { resolveCmsAssetUrl } from '@/lib/assetUrl';
+import SmartImage from '@/components/SmartImage';
 
 const emptyForm = {
   id: 0, slug: '', number: '', titleSr: '', titleTr: '', titleEn: '',
@@ -135,7 +136,16 @@ export default function AdminSectors() {
                 <td className="px-4 py-3 text-white text-sm">{s.number}</td>
                 <td className="px-4 py-3 text-white text-sm">{s.slug}</td>
                 <td className="px-4 py-3 text-white text-sm">{s.titleEn}</td>
-                <td className="px-4 py-3">{s.imageUrl && <img src={resolveCmsAssetUrl(s.imageUrl)} alt="" className="w-12 h-8 object-cover rounded" />}</td>
+                <td className="px-4 py-3">
+                  <SmartImage
+                    src={s.imageUrl}
+                    alt=""
+                    wrapperClassName="w-12 h-8 rounded"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </td>
                 <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${s.isActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{s.isActive ? 'Aktif' : 'Pasif'}</span></td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">

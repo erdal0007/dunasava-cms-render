@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import gsap from 'gsap';
 import { ChevronDown } from 'lucide-react';
+import SmartImage from '../components/SmartImage';
 
 export default function HeroSection() {
   const { t } = useLanguage();
@@ -39,7 +40,14 @@ export default function HeroSection() {
   return (
     <section ref={sectionRef} id="hero" className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
-        <img src="/assets/images/hero-reservoir-drone.jpg" alt="" className="w-full h-full object-cover" />
+        <SmartImage
+          src="/assets/images/hero-reservoir-drone.jpg"
+          alt=""
+          wrapperClassName="w-full h-full"
+          className="w-full h-full object-cover"
+          loading="eager"
+          decoding="async"
+        />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 20%, rgba(10,22,40,0.88) 100%)' }} />
       </div>
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">

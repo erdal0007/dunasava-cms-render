@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router'
 import Home from './pages/Home'
-import Login from './pages/Login'
 import NotFound from './pages/NotFound'
+const Login = lazy(() => import('./pages/Login'))
 
 const AdminLayout = lazy(() => import('./admin/AdminLayout'))
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard'))

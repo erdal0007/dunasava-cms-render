@@ -29,7 +29,14 @@ export default function Footer() {
     <footer className="relative overflow-hidden">
       <div className="relative bg-[#0A1628] py-20">
         <div className="absolute inset-0 opacity-40">
-          <img src="/assets/images/world-map-footer.jpg" alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at 18% 22%, rgba(74,124,89,0.18), transparent 22%), radial-gradient(circle at 78% 28%, rgba(255,255,255,0.08), transparent 18%), radial-gradient(circle at 52% 68%, rgba(74,124,89,0.12), transparent 24%), linear-gradient(180deg, rgba(7,15,26,0.5), rgba(10,22,40,0.9))",
+            }}
+          />
+          <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:28px_28px]" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628] via-transparent to-[#0A1628]" />
         </div>
         <div className="content-max relative z-10 text-center px-6">

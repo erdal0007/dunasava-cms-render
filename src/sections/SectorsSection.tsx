@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { trpc } from '@/providers/trpc';
-import { resolveCmsAssetUrl } from '@/lib/assetUrl';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import SmartImage from '../components/SmartImage';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,6 +13,14 @@ export default function SectorsSection() {
   const { data: sectorList } = trpc.cms.sectorList.useQuery();
 
   const activeSectors = sectorList?.filter(s => s.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  type SectorTextSource = {
+    titleSr?: string | null;
+    titleTr?: string | null;
+    titleEn?: string | null;
+    descriptionSr?: string | null;
+    descriptionTr?: string | null;
+    descriptionEn?: string | null;
+  };
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -26,7 +34,7 @@ export default function SectorsSection() {
     return () => ctx.revert();
   }, [activeSectors]);
 
-  const getT = (s: typeof activeSectors extends (infer U)[] ? NonNullable<U> : never, field: 'title' | 'description') => {
+  const getT = (s: SectorTextSource, field: 'title' | 'description') => {
     if (language === 'sr') return s[`${field}Sr`] || s[`${field}En`];
     if (language === 'tr') return s[`${field}Tr`] || s[`${field}En`];
     return s[`${field}En`];
@@ -46,7 +54,14 @@ export default function SectorsSection() {
           {activeSectors?.map((sector, i) => (
             <div key={sector.id} className={`sector-card grid lg:grid-cols-2 gap-8 lg:gap-16 items-center opacity-0`}>
               <div className={`relative overflow-hidden rounded-lg aspect-video group ${i % 2 === 1 ? 'lg:order-2' : ''}`}>
-                {sector.imageUrl && <img src={resolveCmsAssetUrl(sector.imageUrl)} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />}
+                <SmartImage
+                  src={sector.imageUrl}
+                  alt=""
+                  wrapperClassName="w-full h-full"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628]/60 via-transparent to-transparent" />
                 <span className="absolute top-4 right-4 font-display text-6xl md:text-8xl text-[#4A7C59]/15 select-none pointer-events-none">{sector.number}</span>
               </div>

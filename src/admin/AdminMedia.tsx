@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { toast } from "sonner";
 import { Copy, Plus, Trash2 } from "lucide-react";
-import { resolveCmsAssetUrl } from "@/lib/assetUrl";
+import SmartImage from "@/components/SmartImage";
 
 function guessMimeType(url: string) {
   const lower = url.toLowerCase();
@@ -183,7 +183,15 @@ export default function AdminMedia() {
         ) : (
           filtered.map((a) => (
             <div key={a.id} className="bg-[#0D1F2D] border border-[#1A3A4A] rounded-xl p-3">
-              <img src={resolveCmsAssetUrl(a.url)} alt={a.originalName} className="w-full h-40 object-cover rounded mb-3 bg-[#0A1628]" />
+              <SmartImage
+                src={a.url}
+                alt={a.originalName}
+                wrapperClassName="w-full h-40 rounded mb-3"
+                className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
+                fallbackLabel="DUNASAVA"
+              />
               <div className="text-white text-xs mb-1 truncate">{a.originalName}</div>
               <div className="text-[#8A9BAE] text-[11px] mb-2">{a.category}</div>
               <div className="text-[#8A9BAE] text-[11px] break-all mb-3">{a.url}</div>
