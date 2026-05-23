@@ -8,6 +8,7 @@ import {
   int,
   boolean,
 } from "drizzle-orm/mysql-core";
+import { CMS_SECTION_TYPES } from "@contracts/cms";
 
 // Users (auth)
 export const users = mysqlTable("users", {
@@ -62,7 +63,7 @@ export const sections = mysqlTable("sections", {
   imageUrl: text("imageUrl"),
   sortOrder: int("sortOrder").default(0).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
-  sectionType: mysqlEnum("sectionType", ["hero", "about", "mission", "products", "sectors", "production", "statistics", "contact"]).notNull(),
+  sectionType: mysqlEnum("sectionType", CMS_SECTION_TYPES).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -146,6 +147,8 @@ export const assets = mysqlTable("assets", {
   size: int("size").notNull(),
   url: text("url").notNull(),
   category: varchar("category", { length: 100 }).default("general").notNull(),
+  source: mysqlEnum("source", ["upload", "library"]).default("upload").notNull(),
+  isVisible: boolean("isVisible").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

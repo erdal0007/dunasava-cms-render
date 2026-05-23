@@ -1,4 +1,5 @@
 import { trpc } from '@/providers/trpc';
+import { getCmsSectionLabel } from '@contracts/cms';
 import {
   Layers, Package, Factory, Languages, BarChart3, Image, Globe,
 } from 'lucide-react';
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
                   <div className={`w-2 h-2 rounded-full ${section.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
                   <span className="text-white text-sm">{section.titleEn}</span>
                 </div>
-                <span className="text-[#8A9BAE] text-[10px] uppercase">{section.sectionType}</span>
+                <span className="text-[#8A9BAE] text-[10px] uppercase">{getCmsSectionLabel(section.sectionType, 'tr')}</span>
               </div>
             )) || <p className="text-[#8A9BAE] text-sm">Veri yok</p>}
           </div>

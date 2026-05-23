@@ -1,13 +1,5 @@
-const DEFAULT_CMS_ASSET_ORIGIN = "https://dunasava-cms.onrender.com";
+import { resolveCmsAssetUrl as resolveSharedCmsAssetUrl } from "@contracts/cms";
 
 export function resolveCmsAssetUrl(url: string | null | undefined) {
-  if (!url) return "";
-  if (/^(https?:)?\/\//i.test(url) || url.startsWith("data:")) {
-    return url;
-  }
-  if (url.startsWith("/uploads/")) {
-    const origin = process.env.PUBLIC_ASSET_BASE_URL?.trim() || DEFAULT_CMS_ASSET_ORIGIN;
-    return new URL(url, origin).toString();
-  }
-  return url;
+  return resolveSharedCmsAssetUrl(url);
 }

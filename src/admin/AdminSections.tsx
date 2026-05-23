@@ -3,14 +3,51 @@ import { trpc } from '@/providers/trpc';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 import { resolveCmsAssetUrl } from '@/lib/assetUrl';
+import {
+  CMS_SECTION_META,
+  CMS_SECTION_TYPES,
+  getCmsSectionLabel,
+  type CmsSectionType,
+} from '@contracts/cms';
 
-const sectionTypes = ['hero', 'about', 'mission', 'products', 'sectors', 'production', 'statistics', 'contact'] as const;
+const sectionTypes = CMS_SECTION_TYPES;
 
-const emptyForm = {
-  id: 0, slug: '', titleSr: '', titleTr: '', titleEn: '',
-  contentSr: '', contentTr: '', contentEn: '',
-  eyebrowSr: '', eyebrowTr: '', eyebrowEn: '',
-  imageUrl: '', sortOrder: 0, isActive: true, sectionType: 'about' as typeof sectionTypes[number],
+type SectionType = CmsSectionType;
+
+type SectionForm = {
+  id: number;
+  slug: string;
+  titleSr: string;
+  titleTr: string;
+  titleEn: string;
+  contentSr: string;
+  contentTr: string;
+  contentEn: string;
+  eyebrowSr: string;
+  eyebrowTr: string;
+  eyebrowEn: string;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+  sectionType: SectionType;
+};
+
+const emptyForm: SectionForm = {
+  id: 0,
+  slug: '',
+  titleSr: '',
+  titleTr: '',
+  titleEn: '',
+  contentSr: '',
+  contentTr: '',
+  contentEn: '',
+  eyebrowSr: '',
+  eyebrowTr: '',
+  eyebrowEn: '',
+  imageUrl: '',
+  sortOrder: CMS_SECTION_META.content.defaultSortOrder,
+  isActive: true,
+  sectionType: 'content',
 };
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -23,7 +60,7 @@ export default function AdminSections() {
   const utils = trpc.useUtils();
   const { data: sections, isLoading } = trpc.cms.sectionList.useQuery();
   const { data: assetList } = trpc.cms.assetList.useQuery();
-  const [editing, setEditing] = useState<typeof emptyForm | null>(null);
+  const [editing, setEditing] = useState<SectionForm | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [statusMessage, setStatusMessage] = useState('');
@@ -46,10 +83,18 @@ export default function AdminSections() {
   });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
-  const filtered = sections?.filter(s =>
-    s.titleEn?.toLowerCase().includes(search.toLowerCase()) ||
-    s.slug.toLowerCase().includes(search.toLowerCase())
-  );
+  const searchTerm = search.toLowerCase();
+  const selectableAssets = (assetList || []).filter((asset) => asset.isVisible !== false);
+  const filtered = sections?.filter((section) => {
+    const typeLabel = getCmsSectionLabel(section.sectionType, 'tr').toLowerCase();
+    return [
+      section.titleEn || '',
+      section.titleTr || '',
+      section.titleSr || '',
+      section.slug || '',
+      typeLabel,
+    ].some((value) => value.toLowerCase().includes(searchTerm));
+  });
 
   const handleSave = async () => {
     if (!editing) return;
@@ -178,7 +223,7 @@ export default function AdminSections() {
                 <td className="px-4 py-3 text-white text-sm">{section.slug}</td>
                 <td className="px-4 py-3 text-white text-sm">{section.titleEn}</td>
                 <td className="px-4 py-3">
-                  <span className="text-[10px] bg-[#1A3A4A] text-[#8A9BAE] px-2 py-0.5 rounded uppercase">{section.sectionType}</span>
+                  <span className="text-[10px] bg-[#1A3A4A] text-[#8A9BAE] px-2 py-0.5 rounded uppercase">{getCmsSectionLabel(section.sectionType, 'tr')}</span>
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -197,7 +242,7 @@ export default function AdminSections() {
                       titleEn: section.titleEn || '', contentSr: section.contentSr || '', contentTr: section.contentTr || '',
                       contentEn: section.contentEn || '', eyebrowSr: section.eyebrowSr || '', eyebrowTr: section.eyebrowTr || '',
                       eyebrowEn: section.eyebrowEn || '', imageUrl: section.imageUrl || '', sortOrder: section.sortOrder,
-                      isActive: section.isActive, sectionType: section.sectionType as typeof sectionTypes[number],
+                      isActive: section.isActive, sectionType: section.sectionType as SectionType,
                     })} className="text-[#8A9BAE] hover:text-[#4A7C59] transition-colors">
                       <Pencil size={15} />
                     </button>
@@ -228,8 +273,8 @@ export default function AdminSections() {
                 </div>
                 <div>
                   <label className="text-[#8A9BAE] text-xs mb-1 block">Tip</label>
-                  <select value={editing.sectionType} onChange={(e) => setEditing({ ...editing, sectionType: e.target.value as typeof sectionTypes[number] })} className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none">
-                    {sectionTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                  <select value={editing.sectionType} onChange={(e) => setEditing({ ...editing, sectionType: e.target.value as SectionType })} className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none">
+                    {sectionTypes.map((type) => <option key={type} value={type}>{getCmsSectionLabel(type, 'tr')}</option>)}
                   </select>
                 </div>
               </div>
@@ -272,10 +317,12 @@ export default function AdminSections() {
                 onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
                 className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
               >
-                    <option value="">Medya kütüphanesinden seç...</option>
-                    {(assetList || []).map((a) => (
-                      <option key={a.id} value={resolveCmsAssetUrl(a.url)}>{a.originalName} - {a.category}</option>
-                    ))}
+                <option value="">Medya kütüphanesinden seç...</option>
+                {selectableAssets.map((a) => (
+                  <option key={a.id} value={resolveCmsAssetUrl(a.url)}>
+                    {a.originalName} - {a.category}
+                  </option>
+                ))}
               </select>
               <div className="grid grid-cols-2 gap-4">
                 <div>

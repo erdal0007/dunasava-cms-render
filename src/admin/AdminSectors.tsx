@@ -3,7 +3,7 @@ import { trpc } from '@/providers/trpc';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Save, Search, Sparkles } from 'lucide-react';
 import { resolveCmsAssetUrl } from '@/lib/assetUrl';
-import SmartImage from '@/components/SmartImage';
+import WatermarkedImage from '@/components/WatermarkedImage';
 
 const emptyForm = {
   id: 0, slug: '', number: '', titleSr: '', titleTr: '', titleEn: '',
@@ -39,6 +39,7 @@ export default function AdminSectors() {
   });
   const autoTranslateMut = trpc.cms.autoTranslate.useMutation();
 
+  const selectableAssets = (assetList || []).filter((asset) => asset.isVisible !== false);
   const filtered = sectorList?.filter(s =>
     s.titleEn?.toLowerCase().includes(search.toLowerCase()) ||
     s.slug.toLowerCase().includes(search.toLowerCase())
@@ -137,14 +138,14 @@ export default function AdminSectors() {
                 <td className="px-4 py-3 text-white text-sm">{s.slug}</td>
                 <td className="px-4 py-3 text-white text-sm">{s.titleEn}</td>
                 <td className="px-4 py-3">
-                  <SmartImage
-                    src={s.imageUrl}
-                    alt=""
-                    wrapperClassName="w-12 h-8 rounded"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  {s.imageUrl && (
+                    <WatermarkedImage
+                      src={resolveCmsAssetUrl(s.imageUrl)}
+                      alt=""
+                      className="w-12 h-8 rounded overflow-hidden"
+                      imgClassName="w-12 h-8 object-cover rounded"
+                    />
+                  )}
                 </td>
                 <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${s.isActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{s.isActive ? 'Aktif' : 'Pasif'}</span></td>
                 <td className="px-4 py-3 text-right">
@@ -189,20 +190,24 @@ export default function AdminSectors() {
                   onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
                   className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
                 >
-                    <option value="">Medya kütüphanesinden seç (1)...</option>
-                    {(assetList || []).map((a) => (
-                      <option key={a.id} value={resolveCmsAssetUrl(a.url)}>{a.originalName} - {a.category}</option>
-                    ))}
+                  <option value="">Medya kütüphanesinden seç (1)...</option>
+                  {selectableAssets.map((a) => (
+                    <option key={a.id} value={resolveCmsAssetUrl(a.url)}>
+                      {a.originalName} - {a.category}
+                    </option>
+                  ))}
                 </select>
                 <select
                   value=""
                   onChange={(e) => setEditing({ ...editing, imageUrl2: e.target.value })}
                   className="w-full bg-[#0A1628] border border-[#1A3A4A] rounded px-3 py-2 text-white text-sm focus:border-[#4A7C59] focus:outline-none"
                 >
-                    <option value="">Medya kütüphanesinden seç (2)...</option>
-                    {(assetList || []).map((a) => (
-                      <option key={a.id} value={resolveCmsAssetUrl(a.url)}>{a.originalName} - {a.category}</option>
-                    ))}
+                  <option value="">Medya kütüphanesinden seç (2)...</option>
+                  {selectableAssets.map((a) => (
+                    <option key={a.id} value={resolveCmsAssetUrl(a.url)}>
+                      {a.originalName} - {a.category}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">

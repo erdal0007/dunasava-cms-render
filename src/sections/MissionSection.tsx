@@ -27,7 +27,7 @@ export default function MissionSection() {
   }, [section]);
 
   return (
-    <section ref={sectionRef} className="bg-[#0F2A1D] section-padding">
+    <section id="mission" ref={sectionRef} className="bg-[#0F2A1D] section-padding">
       <div className="content-max text-center max-w-3xl mx-auto">
         <span className="mission-eyebrow text-label text-[#6B8F5E] block mb-6 opacity-0">{eyebrow}</span>
         <h2 className="mission-title font-display text-white mb-8" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', lineHeight: 1.15 }}>{title}</h2>

@@ -5,13 +5,103 @@ import {
   sectors,
   translations,
   statistics,
+  assets,
+  siteSettings,
 } from "./schema";
+import { eq } from "drizzle-orm";
+import fs from "fs/promises";
+import path from "path";
 
 const db = getDb();
+const GALLERY_ASSET_SEED_KEY = "seed.galleryAssets.v3";
 
 async function tableHasRows(table: any): Promise<boolean> {
   const rows = await db.select().from(table).limit(1);
   return rows.length > 0;
+}
+
+async function getExistingSectionSlugs(): Promise<Set<string>> {
+  const rows = await db.select({ slug: sections.slug }).from(sections);
+  return new Set(rows.map((row) => row.slug));
+}
+
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif"]);
+
+function guessMimeType(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".avif") return "image/avif";
+  return "image/jpeg";
+}
+
+function guessMediaCategory(fileUrl: string) {
+  const normalized = fileUrl.toLowerCase();
+  const categoryMap: Array<[string, string]> = [
+    ["/pvc-geomembrane/", "pvc-geomembrane"],
+    ["/hdpe-geomembrane/", "hdpe-geomembrane"],
+    ["/geocell/", "geocell"],
+    ["/hero/", "hero"],
+    ["/products/", "product"],
+    ["/product/", "product"],
+    ["/sectors/", "sector"],
+    ["/sector/", "sector"],
+    ["/section/", "section"],
+    ["/footer/", "footer"],
+  ];
+
+  for (const [needle, category] of categoryMap) {
+    if (normalized.includes(needle)) return category;
+  }
+
+  if (normalized.includes("pvc")) return "pvc-geomembrane";
+  if (normalized.includes("hdpe")) return "hdpe-geomembrane";
+  if (normalized.includes("geocell")) return "geocell";
+  return "general";
+}
+
+async function collectImageFiles(rootDir: string): Promise<string[]> {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectImageFiles(fullPath)));
+      continue;
+    }
+
+    if (!entry.isFile()) continue;
+    if (!IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
+    files.push(fullPath);
+  }
+
+  return files;
+}
+
+async function collectBundledMediaAssets() {
+  const rootDir = path.join(process.cwd(), "public", "assets", "images");
+  const imageFiles = await collectImageFiles(rootDir).catch(() => []);
+
+  return Promise.all(
+    imageFiles.map(async (filePath) => {
+      const relativePath = path.relative(path.join(process.cwd(), "public"), filePath).replace(/\\/g, "/");
+      const url = `/${relativePath}`;
+      const stat = await fs.stat(filePath);
+      return {
+        filename: path.basename(filePath),
+        originalName: path.basename(filePath),
+        mimeType: guessMimeType(filePath),
+        size: stat.size,
+        url,
+        category: guessMediaCategory(url),
+        source: "library" as const,
+        isVisible: true,
+      };
+    })
+  );
 }
 
 export async function runSeed() {
@@ -103,14 +193,103 @@ export async function runSeed() {
       contentSr: "Naša misija je pružanje visokokvalitetnih geosintetičkih rešenja.", contentTr: "Misyonumuz, her proje için yüksek kaliteli geosentetik çözümler sunmaktır.", contentEn: "Our mission is to provide high-quality geosynthetic solutions for every project.",
       imageUrl: "", sortOrder: 3, isActive: true, sectionType: "mission" as const,
     },
+    {
+      slug: "production", titleSr: "Moderna Postrojenja, Najnovija Tehnologija", titleTr: "Modern Tesisler, En Yeni Teknoloji", titleEn: "Modern Facilities, Latest Technology",
+      eyebrowSr: "PROIZVODNJA I TEHNOLOGIJA", eyebrowTr: "ÜRETİM VE TEKNOLOJİ", eyebrowEn: "PRODUCTION & TECHNOLOGY",
+      contentSr: "DunaSava raspolaže modernim proizvodnim pogonima sa najnovijom tehnologijom.", contentTr: "DunaSava, en yeni teknolojiye sahip modern üretim tesislerine sahiptir.", contentEn: "DunaSava has modern production facilities with the latest technology.",
+      imageUrl: "/assets/images/production-geomembrane-roll.jpg", sortOrder: 40, isActive: true, sectionType: "production" as const,
+    },
+    {
+      slug: "pvc-geomembrane", titleSr: "PVC Geomembrana", titleTr: "PVC Geomembran", titleEn: "PVC Geomembrane",
+      eyebrowSr: "PROJE VİTRİNİ", eyebrowTr: "PROJE VİTRİNİ", eyebrowEn: "PROJECT SHOWCASE",
+      contentSr: "PVC Geomembran ile temel yalıtımı için yapılmış uygulamaları burada görebilirsiniz.", contentTr: "PVC Geomembran ile temel yalıtımı için yapılmış uygulamaları burada görebilirsiniz.", contentEn: "PVC geomembrane foundation waterproofing applications are shown here.",
+      imageUrl: "", sortOrder: 50, isActive: true, sectionType: "pvcGeomembrane" as const,
+    },
+    {
+      slug: "hdpe-geomembrane", titleSr: "HDPE Geomembran", titleTr: "HDPE Geomembran", titleEn: "HDPE Geomembrane",
+      eyebrowSr: "PROJE VİTRİNİ", eyebrowTr: "PROJE VİTRİNİ", eyebrowEn: "PROJECT SHOWCASE",
+      contentSr: "Maden atık havuzu, sulama göleti ve tarımsal amaçlı su toplama çukuru uygulamalarını tek başlık altında topladık.", contentTr: "Maden atık havuzu, sulama göleti ve tarımsal amaçlı su toplama çukuru uygulamalarını tek başlık altında topladık.", contentEn: "Mining waste ponds, irrigation ponds and agricultural water collection pits are grouped here.",
+      imageUrl: "", sortOrder: 60, isActive: true, sectionType: "hdpeGeomembrane" as const,
+    },
+    {
+      slug: "geocell", titleSr: "GEOCELL", titleTr: "GEOCELL", titleEn: "GEOCELL",
+      eyebrowSr: "PROJE VİTRİNİ", eyebrowTr: "PROJE VİTRİNİ", eyebrowEn: "PROJECT SHOWCASE",
+      contentSr: "Geocell uygulamalarını zemin güçlendirme, yol alt temel stabilizasyonu ve şev koruma odağında bir araya getirdik.", contentTr: "Geocell uygulamalarını zemin güçlendirme, yol alt temel stabilizasyonu ve şev koruma odağında bir araya getirdik.", contentEn: "Geocell applications are gathered here around reinforcement, subgrade stabilization and slope protection.",
+      imageUrl: "", sortOrder: 70, isActive: true, sectionType: "geocell" as const,
+    },
+    {
+      slug: "products", titleSr: "Ürünler", titleTr: "Ürünler", titleEn: "Products",
+      eyebrowSr: "ÜRÜN VİTRİNİ", eyebrowTr: "ÜRÜN VİTRİNİ", eyebrowEn: "PRODUCT SHOWCASE",
+      contentSr: "Ürün kartları ve teknik materyaller burada yönetilir.", contentTr: "Ürün kartları ve teknik materyaller burada yönetilir.", contentEn: "Product cards and technical materials are managed here.",
+      imageUrl: "", sortOrder: 80, isActive: true, sectionType: "products" as const,
+    },
+    {
+      slug: "sectors", titleSr: "Sektörler", titleTr: "Sektörler", titleEn: "Sectors",
+      eyebrowSr: "SEKTÖR VİTRİNİ", eyebrowTr: "SEKTÖR VİTRİNİ", eyebrowEn: "SECTOR SHOWCASE",
+      contentSr: "Saha kullanım alanları ve sektör başlıkları burada düzenlenir.", contentTr: "Saha kullanım alanları ve sektör başlıkları burada düzenlenir.", contentEn: "Field application areas and sector headings are managed here.",
+      imageUrl: "", sortOrder: 90, isActive: true, sectionType: "sectors" as const,
+    },
+    {
+      slug: "statistics", titleSr: "İstatistikler", titleTr: "İstatistikler", titleEn: "Statistics",
+      eyebrowSr: "SAYILAR", eyebrowTr: "SAYILAR", eyebrowEn: "NUMBERS",
+      contentSr: "Ana sayfadaki sayaç kartları bu bölümden kontrol edilir.", contentTr: "Ana sayfadaki sayaç kartları bu bölümden kontrol edilir.", contentEn: "The counters on the homepage are controlled from this section.",
+      imageUrl: "", sortOrder: 100, isActive: true, sectionType: "statistics" as const,
+    },
+    {
+      slug: "contact", titleSr: "İletişim", titleTr: "İletişim", titleEn: "Contact",
+      eyebrowSr: "İLETİŞİM", eyebrowTr: "İLETİŞİM", eyebrowEn: "CONTACT",
+      contentSr: "İletişim ve teklif bilgileri burada düzenlenir.", contentTr: "İletişim ve teklif bilgileri burada düzenlenir.", contentEn: "Contact and quote details are managed here.",
+      imageUrl: "", sortOrder: 110, isActive: true, sectionType: "contact" as const,
+    },
   ];
-  if (!(await tableHasRows(sections))) {
-    for (const s of sectionData) {
-      await db.insert(sections).values(s);
-    }
-    console.log(`Inserted ${sectionData.length} sections`);
+  const existingSectionSlugs = await getExistingSectionSlugs();
+  const missingSections = sectionData.filter((section) => !existingSectionSlugs.has(section.slug));
+  if (missingSections.length > 0) {
+    await db.insert(sections).values(missingSections);
+    console.log(`Inserted ${missingSections.length} sections`);
   } else {
-    console.log("Skipped sections (already seeded)");
+    console.log("Skipped sections (already present)");
+  }
+
+  // Keep the media library aligned with every bundled image under public/assets/images.
+  // This makes the admin panel reflect the actual site image inventory.
+  const galleryAssetData = await collectBundledMediaAssets();
+
+  const existingAssetRows = await db.select({ url: assets.url }).from(assets);
+  const existingAssetUrls = new Set(existingAssetRows.map((asset) => asset.url));
+  const missingAssets = galleryAssetData.filter((asset) => !existingAssetUrls.has(asset.url));
+
+  if (missingAssets.length > 0) {
+    await db.insert(assets).values(missingAssets);
+    console.log(`Inserted ${missingAssets.length} gallery assets`);
+  } else {
+    console.log("Skipped gallery assets (already present)");
+  }
+
+  // Align old rows so the panel can treat bundled files as managed library assets.
+  for (const bundledAsset of galleryAssetData) {
+    await db
+      .update(assets)
+      .set({ source: "library", isVisible: true, category: bundledAsset.category })
+      .where(eq(assets.url, bundledAsset.url));
+  }
+
+  const markerRows = await db
+    .select({ id: siteSettings.id })
+    .from(siteSettings)
+    .where(eq(siteSettings.key, GALLERY_ASSET_SEED_KEY))
+    .limit(1);
+  if (markerRows.length > 0) {
+    await db
+      .update(siteSettings)
+      .set({ value: new Date().toISOString(), group: "system" })
+      .where(eq(siteSettings.key, GALLERY_ASSET_SEED_KEY));
+  } else {
+    await db.insert(siteSettings).values({
+      key: GALLERY_ASSET_SEED_KEY,
+      value: new Date().toISOString(),
+      group: "system",
+    });
   }
 
   // Seed products

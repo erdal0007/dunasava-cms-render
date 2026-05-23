@@ -14,7 +14,31 @@ import {
   assets,
   statistics,
 } from "@db/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and } from "drizzle-orm";
+import { CMS_SECTION_TYPES } from "@contracts/cms";
+
+const sectionTypeSchema = z.enum(CMS_SECTION_TYPES);
+
+async function clearAssetReferences(db: ReturnType<typeof getDb>, url: string) {
+  await Promise.all([
+    db.update(sections).set({ imageUrl: "" }).where(eq(sections.imageUrl, url)),
+    db.update(products).set({ imageUrl: "" }).where(eq(products.imageUrl, url)),
+    db.update(sectors).set({ imageUrl: "" }).where(eq(sectors.imageUrl, url)),
+    db.update(sectors).set({ imageUrl2: "" }).where(eq(sectors.imageUrl2, url)),
+  ]);
+}
+
+async function getAssetById(db: ReturnType<typeof getDb>, id: number) {
+  const rows = await db.select().from(assets).where(eq(assets.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+async function deleteUploadedAssetFile(url: string) {
+  const uploadsDir = getUploadsDir();
+  const filename = path.basename(url);
+  const filePath = path.join(uploadsDir, filename);
+  await fs.unlink(filePath).catch(() => {});
+}
 
 async function translateTextWithOpenAI(text: string, targetLang: "English" | "Serbian") {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -138,18 +162,18 @@ export const cmsRouter = createRouter({
   // ========== SECTIONS ==========
   sectionList: publicQuery.query(async () => {
     const db = getDb();
-    return db.select().from(sections).orderBy(asc(sections.sortOrder));
+    return db.select().from(sections).orderBy(asc(sections.sortOrder), asc(sections.id));
   }),
 
   sectionByType: publicQuery
-    .input(z.object({ type: z.string() }))
+    .input(z.object({ type: sectionTypeSchema }))
     .query(async ({ input }) => {
       const db = getDb();
       return db
         .select()
         .from(sections)
-        .where(eq(sections.sectionType, input.type as any))
-        .orderBy(asc(sections.sortOrder));
+        .where(and(eq(sections.sectionType, input.type), eq(sections.isActive, true)))
+        .orderBy(asc(sections.sortOrder), asc(sections.id));
     }),
 
   sectionCreate: adminQuery
@@ -168,7 +192,7 @@ export const cmsRouter = createRouter({
         imageUrl: z.string().optional(),
         sortOrder: z.number().default(0),
         isActive: z.boolean().default(true),
-        sectionType: z.enum(["hero", "about", "mission", "products", "sectors", "production", "statistics", "contact"]),
+        sectionType: sectionTypeSchema,
       })
     )
     .mutation(async ({ input }) => {
@@ -194,7 +218,7 @@ export const cmsRouter = createRouter({
         imageUrl: z.string().optional(),
         sortOrder: z.number(),
         isActive: z.boolean(),
-        sectionType: z.enum(["hero", "about", "mission", "products", "sectors", "production", "statistics", "contact"]),
+        sectionType: sectionTypeSchema,
       })
     )
     .mutation(async ({ input }) => {
@@ -499,15 +523,52 @@ export const cmsRouter = createRouter({
         size: buffer.length,
         url,
         category: input.category,
+        source: "upload",
+        isVisible: true,
       });
 
       return { success: true, url };
+    }),
+
+  assetSetVisibility: adminQuery
+    .input(
+      z.object({
+        id: z.number(),
+        isVisible: z.boolean(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const asset = await getAssetById(db, input.id);
+      if (!asset) {
+        throw new Error("Asset not found.");
+      }
+
+      if (asset.source === "library" && !input.isVisible) {
+        await clearAssetReferences(db, asset.url);
+      }
+
+      await db.update(assets).set({ isVisible: input.isVisible }).where(eq(assets.id, input.id));
+      return { success: true };
     }),
 
   assetDelete: adminQuery
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();
+      const asset = await getAssetById(db, input.id);
+      if (!asset) {
+        return { success: true };
+      }
+
+      await clearAssetReferences(db, asset.url);
+
+      if (asset.source === "library") {
+        await db.update(assets).set({ isVisible: false }).where(eq(assets.id, input.id));
+        return { success: true, hidden: true };
+      }
+
+      await deleteUploadedAssetFile(asset.url);
       await db.delete(assets).where(eq(assets.id, input.id));
       return { success: true };
     }),

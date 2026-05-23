@@ -1,63 +1,46 @@
 import mysql from "mysql2/promise";
 import { runSeed } from "../../db/seed";
-import { getDb } from "../queries/connection";
-import { sections } from "@db/schema";
+import { CMS_SECTION_TYPES } from "@contracts/cms";
 import { env } from "./env";
 
-function isMissingTableError(error: unknown): boolean {
-  const message = extractErrorText(error);
-  return (
-    message.includes("doesn't exist") ||
-    message.includes("ER_NO_SUCH_TABLE") ||
-    message.includes("42S02") ||
-    message.includes("errno: 1146") ||
-    message.includes("Table") && message.includes("doesn't exist")
-  );
-}
+const SECTION_TYPE_ENUM_SQL = CMS_SECTION_TYPES.map((type) => `'${type}'`).join(", ");
+const USERS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  unionId VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(255) NULL,
+  email VARCHAR(320) NULL,
+  avatar TEXT NULL,
+  role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  lastSignInAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`;
 
-function extractErrorText(error: unknown): string {
-  if (!error) return "";
-
-  if (typeof error === "string") return error;
-  if (error instanceof Error) {
-    const extra = JSON.stringify(error, null, 2);
-    return `${error.name}\n${error.message}\n${extra}`;
-  }
-
-  try {
-    return JSON.stringify(error, null, 2);
-  } catch {
-    return String(error);
-  }
-}
+const ASSETS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS assets (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  filename VARCHAR(255) NOT NULL,
+  originalName VARCHAR(255) NOT NULL,
+  mimeType VARCHAR(100) NOT NULL,
+  size INT NOT NULL,
+  url TEXT NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT 'general',
+  source ENUM('upload', 'library') NOT NULL DEFAULT 'upload',
+  isVisible BOOLEAN NOT NULL DEFAULT TRUE,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`;
 
 export async function ensureDatabaseReady() {
-  const db = getDb();
-  try {
-    await db.select({ id: sections.id }).from(sections).limit(1);
-  } catch (error) {
-    if (!isMissingTableError(error)) {
-      throw error;
-    }
-    console.log("[bootstrap] Missing tables detected. Creating schema...");
-    await createSchemaIfMissing();
-  }
+  await ensureSchemaTables();
+  await ensureSectionTypeEnum();
+  await ensureAssetsTableShape();
+  await ensureUsersTableShape();
 
   console.log("[bootstrap] Running idempotent seed...");
   await runSeed();
 }
 
 const createTableStatements = [
-  `CREATE TABLE IF NOT EXISTS assets (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    originalName VARCHAR(255) NOT NULL,
-    mimeType VARCHAR(100) NOT NULL,
-    size INT NOT NULL,
-    url TEXT NOT NULL,
-    category VARCHAR(100) NOT NULL DEFAULT 'general',
-    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
+  ASSETS_TABLE_SQL,
   `CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     slug VARCHAR(100) NOT NULL UNIQUE,
@@ -88,7 +71,7 @@ const createTableStatements = [
     imageUrl TEXT NULL,
     sortOrder INT NOT NULL DEFAULT 0,
     isActive BOOLEAN NOT NULL DEFAULT TRUE,
-    sectionType ENUM('hero', 'about', 'mission', 'products', 'sectors', 'production', 'statistics', 'contact') NOT NULL,
+    sectionType ENUM(${SECTION_TYPE_ENUM_SQL}) NOT NULL,
     createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )`,
@@ -139,25 +122,98 @@ const createTableStatements = [
     createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )`,
-  `CREATE TABLE IF NOT EXISTS users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    unionId VARCHAR(255) NOT NULL UNIQUE,
-    name VARCHAR(255) NULL,
-    email VARCHAR(320) NULL,
-    avatar TEXT NULL,
-    role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
-    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    lastSignInAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
 ];
 
-async function createSchemaIfMissing() {
+async function ensureSchemaTables() {
   const connection = await mysql.createConnection(env.databaseUrl);
   try {
     for (const sql of createTableStatements) {
       await connection.execute(sql);
     }
+    await connection.execute(
+      `ALTER TABLE sections MODIFY sectionType ENUM(${SECTION_TYPE_ENUM_SQL}) NOT NULL`
+    );
+  } finally {
+    await connection.end();
+  }
+}
+
+async function columnExists(
+  connection: Awaited<ReturnType<typeof mysql.createConnection>>,
+  tableName: string,
+  columnName: string,
+) {
+  const [rows] = await connection.execute<any[]>(
+    `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = ?
+        AND column_name = ?
+      LIMIT 1
+    `,
+    [tableName, columnName],
+  );
+  return rows.length > 0;
+}
+
+async function ensureUsersTableShape() {
+  const connection = await mysql.createConnection(env.databaseUrl);
+  try {
+    await connection.execute(USERS_TABLE_SQL);
+
+    const definitions = [
+      "unionId VARCHAR(255) NOT NULL UNIQUE",
+      "name VARCHAR(255) NULL",
+      "email VARCHAR(320) NULL",
+      "avatar TEXT NULL",
+      "role ENUM('user', 'admin') NOT NULL DEFAULT 'user'",
+      "createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      "updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      "lastSignInAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    ];
+
+    for (const definition of definitions) {
+      const columnName = definition.split(" ")[0].replace(/`/g, "");
+      if (await columnExists(connection, "users", columnName)) {
+        continue;
+      }
+      await connection.execute(`ALTER TABLE users ADD COLUMN ${definition}`);
+    }
+  } finally {
+    await connection.end();
+  }
+}
+
+async function ensureAssetsTableShape() {
+  const connection = await mysql.createConnection(env.databaseUrl);
+  try {
+    await connection.execute(ASSETS_TABLE_SQL);
+
+    const definitions = [
+      "category VARCHAR(100) NOT NULL DEFAULT 'general'",
+      "source ENUM('upload', 'library') NOT NULL DEFAULT 'upload'",
+      "isVisible BOOLEAN NOT NULL DEFAULT TRUE",
+    ];
+
+    for (const definition of definitions) {
+      const columnName = definition.split(" ")[0].replace(/`/g, "");
+      if (await columnExists(connection, "assets", columnName)) {
+        continue;
+      }
+      await connection.execute(`ALTER TABLE assets ADD COLUMN ${definition}`);
+    }
+  } finally {
+    await connection.end();
+  }
+}
+
+async function ensureSectionTypeEnum() {
+  const connection = await mysql.createConnection(env.databaseUrl);
+  try {
+    await connection.execute(
+      `ALTER TABLE sections MODIFY sectionType ENUM(${SECTION_TYPE_ENUM_SQL}) NOT NULL`
+    );
   } finally {
     await connection.end();
   }
