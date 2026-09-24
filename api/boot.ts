@@ -6,9 +6,39 @@ import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
 import { ensureDatabaseReady } from "./lib/bootstrap";
+import { getUploadsDir } from "./lib/uploads";
+import fs from "fs/promises";
+import path from "path";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 const UPLOADS_ORIGIN = process.env.UPLOADS_ORIGIN || "https://dunasava-cms.onrender.com";
+const UPLOAD_PROXY_HEADER = "x-dunasava-upload-proxy";
+
+async function hasLocalUpload(pathname: string) {
+  let relative: string;
+  try {
+    relative = decodeURIComponent(pathname.slice("/uploads/".length));
+  } catch {
+    return false;
+  }
+  if (!relative || relative.includes("\0")) return false;
+  const uploadsDir = path.resolve(getUploadsDir());
+  const filePath = path.resolve(uploadsDir, relative);
+  if (!filePath.startsWith(uploadsDir + path.sep)) return false;
+  return fs
+    .stat(filePath)
+    .then((stats) => stats.isFile())
+    .catch(() => false);
+}
+
+function applyUploadSecurityHeaders(headers: Headers) {
+  // Uploaded files (including SVG) must never run scripts on this origin.
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set(
+    "Content-Security-Policy",
+    "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+  );
+}
 
 const defaultAllowedOrigins = new Set([
   "https://dunasava.com",
@@ -60,28 +90,48 @@ app.use("/api/*", async (c, next) => {
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 
-app.on(["GET", "HEAD"], "/uploads/*", async (c) => {
+app.on(["GET", "HEAD"], "/uploads/*", async (c, next) => {
   const incoming = new URL(c.req.url);
+
+  // Files on the persistent disk are served by the static handler registered
+  // in serveStaticFiles (production only).
+  if (env.isProduction && (await hasLocalUpload(incoming.pathname))) {
+    await next();
+    applyUploadSecurityHeaders(c.res.headers);
+    return;
+  }
+
   const target = new URL(incoming.pathname + incoming.search, UPLOADS_ORIGIN);
+  // Never proxy to ourselves: that would recurse until the request times out.
+  const isSelfRequest =
+    c.req.header(UPLOAD_PROXY_HEADER) === "1" || target.host === incoming.host;
 
-  try {
-    const upstream = await fetch(target, {
-      headers: {
-        accept: c.req.header("accept") || "image/*,*/*;q=0.8",
-      },
-    });
-
-    const contentType = upstream.headers.get("content-type") || "";
-    if (upstream.ok && contentType.startsWith("image/")) {
-      const headers = new Headers(upstream.headers);
-      headers.set("Cache-Control", "public, max-age=31536000, immutable");
-      return new Response(upstream.body, {
-        status: upstream.status,
-        headers,
+  if (!isSelfRequest) {
+    try {
+      const upstream = await fetch(target, {
+        headers: {
+          accept: c.req.header("accept") || "image/*,*/*;q=0.8",
+          [UPLOAD_PROXY_HEADER]: "1",
+        },
       });
+
+      const contentType = upstream.headers.get("content-type") || "";
+      if (upstream.ok && contentType.startsWith("image/")) {
+        const headers = new Headers(upstream.headers);
+        headers.delete("set-cookie");
+        // fetch() already decoded the body; stale encoding headers would corrupt it.
+        headers.delete("content-encoding");
+        headers.delete("content-length");
+        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+        applyUploadSecurityHeaders(headers);
+        return new Response(upstream.body, {
+          status: upstream.status,
+          headers,
+        });
+      }
+    } catch {
+      // Fall through to the placeholder below.
     }
-  } catch {
-    // Fall through to the placeholder below.
   }
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>

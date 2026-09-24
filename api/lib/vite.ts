@@ -11,7 +11,15 @@ export function serveStaticFiles(app: App) {
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
   const uploadsDir = getUploadsDir();
 
-  app.use("/uploads/*", serveStatic({ root: uploadsDir }));
+  // Files are stored as <uploadsDir>/<filename>, so strip the /uploads prefix
+  // before resolving against the uploads root.
+  app.use(
+    "/uploads/*",
+    serveStatic({
+      root: uploadsDir,
+      rewriteRequestPath: (requestPath) => requestPath.replace(/^\/uploads/, ""),
+    }),
+  );
   app.use("*", serveStatic({ root: "./dist/public" }));
 
   app.notFound((c) => {

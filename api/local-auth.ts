@@ -1,5 +1,6 @@
 import * as cookie from "cookie";
 import * as jose from "jose";
+import { createHash, timingSafeEqual } from "crypto";
 import { Session } from "@contracts/constants";
 import { Errors } from "@contracts/errors";
 import { env } from "./lib/env";
@@ -14,9 +15,20 @@ type SessionPayload = {
 };
 
 function sessionSecret() {
+  // Prefer a dedicated random secret; fall back to the legacy derivation so
+  // existing deployments keep working until SESSION_SECRET is configured.
+  if (env.sessionSecret) {
+    return new TextEncoder().encode(env.sessionSecret);
+  }
   return new TextEncoder().encode(
     `local-auth:${env.adminEmail}:${env.adminPassword}`,
   );
+}
+
+function safeEqual(a: string, b: string) {
+  const hashA = createHash("sha256").update(a).digest();
+  const hashB = createHash("sha256").update(b).digest();
+  return timingSafeEqual(hashA, hashB);
 }
 
 function adminUnionId() {
@@ -27,7 +39,7 @@ export async function signSessionToken(): Promise<string> {
   return new jose.SignJWT({ sub: adminUnionId() } satisfies SessionPayload)
     .setProtectedHeader({ alg: JWT_ALG })
     .setIssuedAt()
-    .setExpirationTime("1 year")
+    .setExpirationTime(`${Math.floor(Session.maxAgeMs / 1000)}s`)
     .sign(sessionSecret());
 }
 
@@ -86,8 +98,11 @@ export async function authenticateRequest(headers: Headers) {
 }
 
 export function validateAdminCredentials(email: string, password: string) {
-  return (
-    email.trim().toLowerCase() === env.adminEmail.toLowerCase() &&
-    password === env.adminPassword
+  if (!env.adminEmail || !env.adminPassword) return false;
+  const emailMatches = safeEqual(
+    email.trim().toLowerCase(),
+    env.adminEmail.toLowerCase(),
   );
+  const passwordMatches = safeEqual(password, env.adminPassword);
+  return emailMatches && passwordMatches;
 }

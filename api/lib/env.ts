@@ -17,6 +17,7 @@ export const env = {
   databaseUrl: required("DATABASE_URL"),
   adminEmail: required("ADMIN_EMAIL"),
   adminPassword: required("ADMIN_PASSWORD"),
+  sessionSecret: optional("SESSION_SECRET"),
   appId: optional("APP_ID") || optional("VITE_APP_ID"),
   appSecret: optional("APP_SECRET"),
   kimiAuthUrl: optional("KIMI_AUTH_URL") || optional("VITE_KIMI_AUTH_URL") || "https://kimi.moonshot.cn",
