@@ -479,8 +479,11 @@ export const cmsRouter = createRouter({
   assetUpload: adminQuery
     .input(
       z.object({
-        fileName: z.string().min(1),
-        mimeType: z.string().min(1),
+        fileName: z.string().min(1).max(255),
+        mimeType: z
+          .string()
+          .min(1)
+          .regex(/^image\/[a-z0-9.+-]+$/i, "Only image uploads are allowed."),
         dataBase64: z.string().min(1),
         category: z.string().default("general"),
       })

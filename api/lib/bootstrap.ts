@@ -130,9 +130,6 @@ async function ensureSchemaTables() {
     for (const sql of createTableStatements) {
       await connection.execute(sql);
     }
-    await connection.execute(
-      `ALTER TABLE sections MODIFY sectionType ENUM(${SECTION_TYPE_ENUM_SQL}) NOT NULL`
-    );
   } finally {
     await connection.end();
   }

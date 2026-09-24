@@ -266,19 +266,26 @@ export async function runSeed() {
     console.log("Skipped gallery assets (already present)");
   }
 
-  // Align old rows so the panel can treat bundled files as managed library assets.
-  for (const bundledAsset of galleryAssetData) {
-    await db
-      .update(assets)
-      .set({ source: "library", isVisible: true, category: bundledAsset.category })
-      .where(eq(assets.url, bundledAsset.url));
-  }
-
   const markerRows = await db
     .select({ id: siteSettings.id })
     .from(siteSettings)
     .where(eq(siteSettings.key, GALLERY_ASSET_SEED_KEY))
     .limit(1);
+
+  // Align old rows so the panel can treat bundled files as managed library assets.
+  // Visibility is only reset on the first run of this seed version, so assets
+  // hidden later in the admin panel stay hidden across restarts/deploys.
+  for (const bundledAsset of galleryAssetData) {
+    await db
+      .update(assets)
+      .set({
+        source: "library",
+        category: bundledAsset.category,
+        ...(markerRows.length === 0 ? { isVisible: true } : {}),
+      })
+      .where(eq(assets.url, bundledAsset.url));
+  }
+
   if (markerRows.length > 0) {
     await db
       .update(siteSettings)
