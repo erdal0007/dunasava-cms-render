@@ -97,7 +97,16 @@ Admin'e özel, ama sınırsız metin OpenAI maliyetini artırabilir. `z.string()
 
 **L8. Test yok.** `vitest` kurulu ama hiç test dosyası yok. En azından `local-auth`, upload doğrulaması ve `contracts/cms.ts` yardımcıları için birim testleri eklenmeli.
 
-**L9. Bağımlılık denetimi.** `npm audit` sonuçları PR açıklamasında belirtildi. Sürüm yükseltmeleri kapsam dışı bırakıldı.
+**L9. Bağımlılık açıkları (`npm audit --omit=dev`: 4 yüksek, 2 orta).**
+- `react-router` ≤ 7.18.1 (yüksek): açık yönlendirme, DoS ve RSC ile ilgili açıklar.
+- `nanoid` 5.x (yüksek), `lodash` (prototype pollution), `mysql2` ≤ 3.23.0 (orta, sıkıştırma bombası ile DoS).
+
+Hepsi `npm audit fix` ile yamalanabiliyor. Lockfile değişikliği ve regresyon testi gerektirdiği için bu branch'te yapılmadı. Öncelikle `react-router` ve `mysql2` güncellenmeli.
+
+**L10. `package-lock.json` içinde 305 paket `registry.npmmirror.com` adresinden çözülüyor.**
+Resmî npm kaydı yerine üçüncü taraf bir ayna kullanılıyor. Bu hem tedarik zinciri güveni hem de build süresi ve güvenilirliği açısından risk. Bu ortamda `npm ci` bu yüzden başarısız oldu. *Öneri:* lockfile `registry.npmjs.org` ile yeniden üretilmeli.
+
+**L11. Mevcut lint hataları.** `npm run lint` 7 hata veriyor: kullanılmayan `id` değişkenleri ve `any` kullanımı (`cms-router.ts`, `bootstrap.ts`, `http.ts`, `seed.ts`). Hiçbiri bu branch'te eklenmedi.
 
 ---
 
